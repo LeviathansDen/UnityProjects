@@ -10,11 +10,12 @@ public class PlayerController : MonoBehaviour
     private GameObject legPivot;
     private GameObject armPivot;
     private GameObject head;
-    private GameObject unarmed;
     private bool unarmedEquipped = true;
     private GameObject pistolObject;
     private SpriteRenderer pistolSprite;
     private bool pistolEquipped = false;
+    private bool isAiming = false;
+    Vector3 mousePosition;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -26,6 +27,7 @@ public class PlayerController : MonoBehaviour
         head = GameObject.Find("Player/Head");
         pistolObject = GameObject.Find("ArmPivot/Pistol");
         pistolSprite = pistolObject.GetComponent<SpriteRenderer>();
+        HidePistol();
         //Time.timeScale = 0.2f;
     }
 
@@ -38,20 +40,6 @@ public class PlayerController : MonoBehaviour
         // Move the Camera to the player
         Camera.main.transform.position = player.transform.position + cameraOffset;
     }
-
-    private void WeaponHandle()
-    {
-        if (Input.GetKeyDown(KeyCode.Alpha1)) // Switch to unarmed
-        {
-            //EquipUnarmed();
-        }
-
-        if (Input.GetKeyDown(KeyCode.Alpha2)) // Switch to ranged weapon
-        {
-            //EquipRangedWeapon();
-        }
-    }
-
     private void MovePlayer()
     {
         // Initialize movement vector
@@ -81,10 +69,79 @@ public class PlayerController : MonoBehaviour
         // Apply the movement to the Rigidbody2D velocity
         player.linearVelocity = new Vector2(playerMovement.x, playerMovement.y);
     }
+    private void WeaponHandle()
+    {
+        if (!isAiming)
+        {
+            if (Input.GetKeyDown(KeyCode.Alpha1)) // Switch to unarmed
+            {
+                HidePistol();
+                unarmedEquipped = true;
+                pistolEquipped = false;
+
+            }
+            if (Input.GetKeyDown(KeyCode.Alpha2)) // Switch to pistol
+            {
+                ShowPistol();
+                unarmedEquipped = false;
+                pistolEquipped = true;
+            }
+        }
+    }
+
+    private void SetAnimation()
+    {
+        float walkAngle = Mathf.Atan2(player.linearVelocity.y, player.linearVelocity.x) * Mathf.Rad2Deg + -90;
+        bool aimHandled = false;
+        // Toggle the Animation Parameters based on whether the player is moving
+        if (player.linearVelocity != Vector2.zero)
+        {
+            playerAnimator.SetBool("isWalking", true);
+            playerAnimator.SetBool("isIdle", false);
+            //set the walk angle based on the velocity direction
+            legPivot.transform.rotation = Quaternion.Euler(new Vector3(0, 0, walkAngle));
+            HandleAim(walkAngle);
+            aimHandled = true;
+        }
+        else
+        {
+            playerAnimator.SetBool("isIdle", true);
+            playerAnimator.SetBool("isWalking", false);
+        }
+
+        if (!aimHandled)
+        {
+            HandleAim(walkAngle);
+        }
+        LookAtMouse(head);
+        Fire();
+    }
+    private void HandleAim(float walkAngle)
+    {
+        if (Input.GetButtonDown("Aim") || Input.GetButton("Aim"))
+        {
+            Debug.Log("Aiming");
+            if (pistolSprite.enabled)
+            {
+                playerAnimator.SetBool("isAiming", true);
+                isAiming = true;
+            }
+            LookAtMouse(armPivot);
+        }
+        else if (Input.GetButtonUp("Aim"))
+        {
+            playerAnimator.SetBool("isAiming", false);
+            isAiming = false;
+        }
+        else if (player.linearVelocity != Vector2.zero)
+        {            
+            armPivot.transform.rotation = Quaternion.Euler(new Vector3(0, 0, walkAngle));          
+        }
+    }
     private void LookAtMouse(GameObject Object)
     {
         // Get the mouse position
-        Vector3 mousePosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        mousePosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
 
         // Calculate the direction from the sprite to the mouse
         Vector2 direction = (mousePosition - Object.transform.position).normalized;
@@ -96,46 +153,17 @@ public class PlayerController : MonoBehaviour
         Object.transform.rotation = Quaternion.Euler(new Vector3(0, 0, angle));
     }
 
-    private void SetAnimation()
+    private void Fire()
     {
-        // Toggle the Animation Parameters based on whether the player is moving
-        if (player.linearVelocity != Vector2.zero)
+        if(isAiming && pistolEquipped)
         {
-            playerAnimator.SetBool("isWalking", true);
-            playerAnimator.SetBool("isIdle", false);
-            //set the walk angle based on the velocity direction
-            float walkAngle = Mathf.Atan2(player.linearVelocity.y, player.linearVelocity.x) * Mathf.Rad2Deg + -90;
-            legPivot.transform.rotation = Quaternion.Euler(new Vector3(0, 0, walkAngle));
-            
-
-        if(Input.GetMouseButtonDown(1))
-        {
-            LookAtMouse(armPivot);
+            RaycastHit2D ray = Physics2D.Raycast(player.transform.position,  Camera.main.ScreenToWorldPoint(Input.mousePosition) - player.transform.position, 10);
+            Debug.DrawRay(player.transform.position, Camera.main.ScreenToWorldPoint(Input.mousePosition) - player.transform.position, Color.red, 0.25f);
+            if(Input.GetButtonDown("Fire"))
+            {
+                Debug.Log("Fire");
+            }
         }
-        else
-        {
-            armPivot.transform.rotation = Quaternion.Euler(new Vector3(0, 0, walkAngle));
-        }
-
-
-        }
-        else
-        {
-            playerAnimator.SetBool("isIdle", true);
-            playerAnimator.SetBool("isWalking", false);
-        }
-
-        if(Input.GetMouseButtonDown(1))
-        {
-            playerAnimator.SetBool("isAiming", true);
-            LookAtMouse(armPivot);
-        }
-        else if(Input.GetMouseButtonUp(1))
-        {
-            playerAnimator.SetBool("isAiming", false);
-        }
-
-        LookAtMouse(head);
     }
 
     public void PistolLayerAbove()
@@ -146,5 +174,15 @@ public class PlayerController : MonoBehaviour
     public void PistolLayerBelow()
     {
         pistolSprite.sortingOrder = 1;
+    }
+
+    void HidePistol()
+    {
+        pistolSprite.enabled = false;
+    }
+
+    void ShowPistol()
+    {
+        pistolSprite.enabled = true;
     }
 }

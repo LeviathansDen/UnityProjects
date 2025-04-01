@@ -21,6 +21,8 @@ public class PlayerController : MonoBehaviour
     private float rayLength;
     private PhysicsMaterial2D originalMaterial;
     private PhysicsMaterial2D noFrictionMaterial;
+    private Vector2 lockedPosition;
+    private bool boostFirstInput;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -43,18 +45,33 @@ public class PlayerController : MonoBehaviour
         //if we are colliding with the ground we read the verticalInput
 
         verticalInput = Input.GetAxis("Vertical"); 
-            if(ray)
-            {                 
-                moveVelocity = new Vector2(0,verticalInput);
-                
-                if(verticalInput < 0)
-                {
-                    moveVelocity = Vector2.zero;
-                    Debug.Log("moveVelocity zero");
-                    /*playerCollider.sharedMaterial == noFriction*/
-                }
-            }
 
+        if(verticalInput < 0)
+        {
+            if(boostFirstInput)
+            {
+                lockedPosition = player.transform.position;
+            }
+            if(ray)
+            {
+                player.transform.position = player.transform.position + new Vector3(0,0.1f,0);
+                player.linearVelocity = Vector2.zero;
+                boostFirstInput = true;
+            }
+            else
+            {
+                player.transform.position = lockedPosition;
+                player.linearVelocity = Vector2.zero;
+                boostFirstInput = false;
+            }
+        }
+        else
+        {
+            if(ray)
+            {
+                moveVelocity = new Vector2(0,verticalInput);
+            }
+        }
         horizontalInput = Input.GetAxis("Horizontal");
         rotationSpeed = horizontalInput * -1;
         
@@ -64,5 +81,6 @@ public class PlayerController : MonoBehaviour
         }
         player.angularVelocity += rotationSpeed;
         Camera.main.transform.position = player.transform.position + offset;
+        Debug.Log("AngularVelocity = " + player.angularVelocity);
     }
 }

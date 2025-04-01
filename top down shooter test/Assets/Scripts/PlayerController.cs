@@ -1,5 +1,7 @@
 using Unity.VisualScripting;
 using UnityEngine;
+using System.Collections;
+using System;
 
 public class PlayerController : MonoBehaviour
 {
@@ -13,9 +15,13 @@ public class PlayerController : MonoBehaviour
     private bool unarmedEquipped = true;
     private GameObject pistolObject;
     private SpriteRenderer pistolSprite;
+    private GameObject pistolFlashObject;
+    private SpriteRenderer pistolFlashSprite;
     private bool pistolEquipped = false;
     private bool isAiming = false;
     Vector3 mousePosition;
+    [SerializeField]
+    private float flashDuration;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -27,7 +33,10 @@ public class PlayerController : MonoBehaviour
         head = GameObject.Find("Player/Head");
         pistolObject = GameObject.Find("ArmPivot/Pistol");
         pistolSprite = pistolObject.GetComponent<SpriteRenderer>();
+        pistolFlashObject = GameObject.Find("ArmPivot/Pistol/Flash");
+        pistolFlashSprite = pistolFlashObject.GetComponent<SpriteRenderer>();
         HidePistol();
+        HidePistolFlash();
         //Time.timeScale = 0.2f;
     }
 
@@ -120,7 +129,6 @@ public class PlayerController : MonoBehaviour
     {
         if (Input.GetButtonDown("Aim") || Input.GetButton("Aim"))
         {
-            Debug.Log("Aiming");
             if (pistolSprite.enabled)
             {
                 playerAnimator.SetBool("isAiming", true);
@@ -161,7 +169,7 @@ public class PlayerController : MonoBehaviour
             Debug.DrawRay(player.transform.position, Camera.main.ScreenToWorldPoint(Input.mousePosition) - player.transform.position, Color.red, 0.25f);
             if(Input.GetButtonDown("Fire"))
             {
-                Debug.Log("Fire");
+                StartCoroutine(PistolFlashCoroutine());
             }
         }
     }
@@ -184,5 +192,24 @@ public class PlayerController : MonoBehaviour
     void ShowPistol()
     {
         pistolSprite.enabled = true;
+    }
+
+    void HidePistolFlash()
+    {
+        pistolFlashSprite.enabled = false;
+    }
+
+    void ShowPistolFlash()
+    {
+        pistolFlashSprite.enabled = true;
+    }
+
+    private IEnumerator PistolFlashCoroutine()
+    {
+        Debug.Log("coroutine hit");
+        flashDuration = 0.05f;
+        ShowPistolFlash();
+        yield return new WaitForSeconds(flashDuration);  // Wait for the duration
+        HidePistolFlash();  // Hide the sprite
     }
 }
